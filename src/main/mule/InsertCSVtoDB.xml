@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+
+     xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+
+     xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+
+     <file:config name="File_Config" doc:name="File Config" doc:id="1c11b8d3-dfb3-4079-868d-2346aaabd03c" >
+
+          <file:connection workingDir="C:\User\input" />
+
+     </file:config>
+
+     <http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="c157e240-06ab-4455-bffa-792a3598e03a">
+		<http:request-connection host="localhost" port="8081" />
+	</http:request-config>
+	<flow name="foreachmysqlFlow" doc:id="856db761-19a6-44b4-baad-2cd8780f3260" >
+
+          <file:listener doc:name="On New or Updated File" doc:id="e5b0ab42-59f6-4e7c-b922-062e236fe263" config-ref="File_Config" moveToDirectory="C:\User\archive" directory="C:\User\input" outputMimeType='application/csv; separator=";"; header=true'>
+
+               <scheduling-strategy >
+
+                    <fixed-frequency />
+
+               </scheduling-strategy>
+
+               <file:matcher filenamePattern="*.csv" />
+
+          </file:listener>
+
+          <ee:transform doc:name="Transform Message" doc:id="c38af6e8-9298-438c-9025-11822a6be8ed" >
+
+               <ee:message >
+
+                    <ee:set-payload ><![CDATA[%dw 2.0
+
+output application/json
+
+---
+
+payload ]]></ee:set-payload>
+
+               </ee:message>
+
+          </ee:transform>
+
+          <foreach doc:name="For Each" doc:id="d3e3c41d-bf1d-4db2-8433-edd32cef0119" >
+
+               <logger level="INFO" doc:name="Logger" doc:id="f5171520-4513-477b-baad-c7f1e52f55b7" message="#[payload]"/>
+
+               <http:request method="PUT" doc:name="Request" doc:id="dc679091-79fb-4f70-a7c6-70b83e0cc842" config-ref="HTTP_Request_configuration" path="/user" responseTimeout="300000"/>
+
+          </foreach>
+
+          <logger level="INFO" doc:name="Logger" doc:id="2deac9d8-28f1-4cc5-84e5-0afaca66c7c3" message="#[payload]"/>
+
+     </flow>
+
+</mule>

@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="711945b0-5e4a-47cc-b202-6ca061460d94" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="my-secret-pw" database="CRUD"/>
+	</db:config>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="45b896cb-c728-4484-80cc-43bc1f7a3667" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<flow name="RequetAllUsers" doc:id="cf61fa9c-b44d-48e2-bacb-a3456b778369" >
+		<http:listener doc:name="Listener" doc:id="3e307c6c-3877-49a2-9d69-3b047006e80f" config-ref="HTTP_Listener_config" path="/user" allowedMethods="GET"/>
+		<db:select doc:name="Select" doc:id="348f7725-8a28-4d2b-b376-4b443045822a" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from User;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Result" doc:id="274cd30f-acbf-4583-85fe-f9936743f345" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="RequestSingleUserID" doc:id="dc57de13-cd4e-4bf8-86bd-5ead7eb83ba7" >
+		<http:listener doc:name="Listener" doc:id="e3d46c9b-d6f5-4e86-a091-6fbcce9b3d22" config-ref="HTTP_Listener_config" allowedMethods="GET" path="/user/{id}"/>
+		<db:select doc:name="Select" doc:id="8c9c4c6b-50d0-4974-a6ea-e5230b4178f6" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from User where ID = :Id;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[Id : attributes.uriParams.id]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Result" doc:id="3e05defb-19b5-4e9a-b5c4-79e7f3fe21e8">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="CreateUser" doc:id="b3f10f5d-eb89-4e9b-a6a5-93e054d93631" >
+		<http:listener doc:name="Listener" doc:id="5ca94471-5c89-4d65-a3d1-61b406b84061" config-ref="HTTP_Listener_config" path="/user" allowedMethods="POST"/>
+		<db:insert doc:name="Insert" doc:id="bb722022-ea60-4ff7-aa40-6cae395297ae" config-ref="Database_Config">
+			<db:sql ><![CDATA[Insert Into User (ID,Nome,Cognome,Email,Indirizzo) values (:Id,:Nome,:Cognome,:Email,:Indirizzo);
+ ]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	
+	Id: payload.Id,
+	Nome: payload.Nome,
+	Cognome: payload.Cognome,
+	Email: payload.Email,
+	Indirizzo: payload.Indirizzo
+	
+	
+	
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Result" doc:id="2ac3e8a4-2122-411c-8f02-d3d185b555b7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="UpdateUser" doc:id="1a4e50c0-0f28-4751-bfd9-00527092921c" >
+		<http:listener doc:name="Listener" doc:id="7d6abddc-bde0-4ce2-a1e4-6ae4a68dcf4a" config-ref="HTTP_Listener_config" path="/user" allowedMethods="PATCH"/>
+		<ee:transform doc:name="Transform Message" doc:id="ad58bc7e-f343-440f-867c-a4033e9321f4" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="update" ><![CDATA[%dw 2.0
+
+output application/json
+
+var arr = payload mapObject {
+
+"Query" : $$ ++ " = " ++ "'" ++$++ "'"
+
+}pluck $ joinBy ","
+
+---
+
+"update User set " ++ arr ++ " where ID = "++ payload.Id ++";"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:update doc:name="Update" doc:id="fb64cd41-0c37-4c34-899e-d1e42cc7cb35" config-ref="Database_Config">
+			<db:sql ><![CDATA[#[vars.update]]]></db:sql>
+		</db:update>
+		<ee:transform doc:name="Result" doc:id="013c340b-d495-4039-a52e-6d0b826f5039" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="DeleteUser" doc:id="e77c7c0e-c4f2-4e69-9540-7563c268928b" >
+		<http:listener doc:name="Listener" doc:id="9eb2ea80-d02c-4382-8cdd-26ca644471c3" config-ref="HTTP_Listener_config" allowedMethods="DELETE" path="/user/{id}"/>
+		<db:delete doc:name="Delete" doc:id="443e1922-b64a-4cb1-a6a7-d3ce7b3bb490" config-ref="Database_Config">
+			<db:sql ><![CDATA[Delete from User where ID = :Id]]></db:sql>
+			<db:input-parameters ><![CDATA[#[Id : attributes.uriParams.id]]]></db:input-parameters>
+		</db:delete>
+		<ee:transform doc:name="Result" doc:id="bee8ec61-5cd5-4030-860a-7412de06f008" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="UpsertUser" doc:id="e500695c-9c61-41a2-91c5-acc94713da88" >
+		<http:listener doc:name="Listener" doc:id="897dbb0e-102c-4f1f-affe-bc384a158a39" config-ref="HTTP_Listener_config" path="/user" allowedMethods="PUT"/>
+		<set-variable value="#[payload]" doc:name="Set Variable" doc:id="8c8592b8-f8ee-4bd0-967f-dbed74e0f50f" variableName="vInputPayload"/>
+		<db:select doc:name="Select" doc:id="a3d70265-c8c3-4a63-ae8d-48337c7c77a6" config-ref="Database_Config">
+			<db:sql ><![CDATA[select ID from User where ID = :Id;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[Id: vars.vInputPayload.Id]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="7b077bf1-8c4b-49e4-8ae0-a63ae49cf1e3" >
+			<when expression="#[payload.id != null]">
+				<db:update doc:name="Update" doc:id="b37a1462-0d08-4636-8130-ebb6c5ace203" config-ref="Database_Config">
+					<db:sql ><![CDATA[update User set Nome= :Nome, Cognome= :Cognome, Email= :Email, Indirizzo= :Indirizzo where ID= :Id;]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	
+	Id: vars.vInputPayload.Id,
+	Nome: vars.vInputPayload.Nome,
+	Cognome: vars.vInputPayload.Cognome,
+	Email: vars.vInputPayload.Email,
+	Indirizzo: vars.vInputPayload.Indirizzo
+	
+	
+}]]]></db:input-parameters>
+				</db:update>
+			</when>
+			<otherwise >
+				<db:insert doc:name="Insert" doc:id="96e82106-ed56-49c9-b719-795f8ae85c12" config-ref="Database_Config">
+					<db:sql ><![CDATA[Insert into User (ID,Nome,Cognome,Email,Indirizzo) values (:Id,:Nome,:Cognome,:Email,:Indirizzo);]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	Id: vars.vInputPayload.Id,
+	Nome: vars.vInputPayload.Nome,
+	Cognome: vars.vInputPayload.Cognome,
+	Email: vars.vInputPayload.Email,
+	Indirizzo: vars.vInputPayload.Indirizzo
+	
+	
+}]]]></db:input-parameters>
+				</db:insert>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Result" doc:id="822c0830-1695-411b-84ea-ea62380f529d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="queryparameter-Nome_E_Cognome" doc:id="b5a4639e-59f7-4fe9-904b-839224d12727" >
+		<http:listener doc:name="Listener" doc:id="840135de-8dcb-4528-8058-dcf8119436e0" config-ref="HTTP_Listener_config" allowedMethods="GET" path="/user/query"/>
+		<db:select doc:name="Select" doc:id="2c748622-2493-4a06-ab4d-cb6b96a60ae4" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from User where (Nome= :Nome or Cognome= :Cognome);]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	Nome: attributes.queryParams.Nome,
+	Cognome: attributes.queryParams.Cognome
+	
+	
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Result" doc:id="1aa12641-4d57-4f9c-96f3-e66c83189a98" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	
+</mule>
