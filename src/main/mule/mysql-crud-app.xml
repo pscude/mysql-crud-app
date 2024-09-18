@@ -164,15 +164,30 @@ payload]]></ee:set-payload>
 	</flow>
 	<flow name="queryparameter-Nome_E_Cognome" doc:id="b5a4639e-59f7-4fe9-904b-839224d12727" >
 		<http:listener doc:name="Listener" doc:id="840135de-8dcb-4528-8058-dcf8119436e0" config-ref="HTTP_Listener_config" allowedMethods="GET" path="/user/query"/>
-		<db:select doc:name="Select" doc:id="2c748622-2493-4a06-ab4d-cb6b96a60ae4" config-ref="Database_Config">
-			<db:sql ><![CDATA[select * from User where (Nome= :Nome or Cognome= :Cognome);]]></db:sql>
-			<db:input-parameters ><![CDATA[#[{
+		<choice doc:name="Choice" doc:id="a0ac84c4-4122-42cd-972b-b4b5450965d3" >
+			<when expression="#[(!isEmpty(attributes.queryParams.Nome) and !isEmpty(attributes.queryParams.Cognome) )]">
+				<db:select doc:name="Select1" doc:id="2c748622-2493-4a06-ab4d-cb6b96a60ae4" config-ref="Database_Config">
+			<db:sql><![CDATA[select * from User where (Nome= :Nome and Cognome= :Cognome);]]></db:sql>
+			<db:input-parameters><![CDATA[#[{
 	Nome: attributes.queryParams.Nome,
 	Cognome: attributes.queryParams.Cognome
 	
 	
 }]]]></db:input-parameters>
 		</db:select>
+			</when>
+			<otherwise >
+				<db:select doc:name="Select2" doc:id="e1894883-8ccc-4dbe-ac62-6b243d5b89bf" config-ref="Database_Config" >
+					<db:sql ><![CDATA[select * from User where (Nome= :Nome or Cognome= :Cognome);]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	Nome: attributes.queryParams.Nome,
+	Cognome: attributes.queryParams.Cognome
+	
+	
+}]]]></db:input-parameters>
+				</db:select>
+			</otherwise>
+		</choice>
 		<ee:transform doc:name="Result" doc:id="1aa12641-4d57-4f9c-96f3-e66c83189a98" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
